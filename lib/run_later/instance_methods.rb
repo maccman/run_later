@@ -19,8 +19,13 @@ module RunLater
       if RunLater.run_now?
         block.call
       else
-        @@run_later ||= RunLater::Worker.instance
-        RunLater.queue << block
+        # For EM based servers (like Thin)
+        if defined?(EventMachine) && EventMachine.reactor_running?
+          EventMachine::defer(block)
+        else
+          @@run_later ||= RunLater::Worker.instance
+          RunLater.queue << block
+        end
       end
     end
   end
