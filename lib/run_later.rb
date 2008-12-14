@@ -1,18 +1,32 @@
-require 'run_later/worker'
-require 'run_later/instance_methods'
+module RunLater
+  @@run_now = false
+  @@queue = ::Queue.new
 
-ActionController::Base.send(:include, RunLater::InstanceMethods)
-# Make run_later available both as instance and class methods
-ActiveRecord::Base.send(:include, RunLater::InstanceMethods)
-ActiveRecord::Base.extend(RunLater::InstanceMethods)
-
-require 'dispatcher' unless defined?(::Dispatcher)
-
-class ActionController::Dispatcher
-  def cleanup_application_with_thread_check
-    RunLater::Worker.cleanup
-    cleanup_application_without_thread_check
+  def self.queue
+    @@queue
   end
 
-  alias_method_chain :cleanup_application, :thread_check
+  def self.run_now?
+    @@run_now
+  end
+
+  def self.run_now=(run_now)
+    @@run_now = run_now
+  end
+
+  module InstanceMethods
+    def run_later(&block)
+      if RunLater.run_now?
+        block.call
+      else
+        # For EM based servers (like Thin)
+        if defined?(EventMachine) && EventMachine.reactor_running?
+          EventMachine::defer(block)
+        else
+          @@run_later ||= RunLater::Worker.instance
+          RunLater.queue << block
+        end
+      end
+    end
+  end
 end

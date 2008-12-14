@@ -1,6 +1,5 @@
 require File.dirname(__FILE__) + '/test_helper'
-require 'run_later/instance_methods'
-require 'run_later/worker'
+require 'run_later'
 
 class RunLaterTest < Test::Unit::TestCase
   include RunLater::InstanceMethods
