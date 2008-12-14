@@ -21,7 +21,7 @@ module RunLater
       else
         # For EM based servers (like Thin)
         if defined?(EventMachine) && EventMachine.reactor_running?
-          EventMachine::defer(block)
+          EventMachine::defer(&block)
         else
           @@run_later ||= RunLater::Worker.instance
           RunLater.queue << block
