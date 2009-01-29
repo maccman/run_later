@@ -12,6 +12,10 @@ module RunLater
           RunLater::Worker.shutdown
           exit
         end
+        trap :QUIT do
+          RunLater::Worker.shutdown
+          exit
+        end
 
         loop {
           process_queue
