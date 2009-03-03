@@ -4,7 +4,7 @@ module RunLater
   class Worker
     attr_accessor :thread
     cattr_accessor :logger
-    
+
     def initialize(logger = RAILS_DEFAULT_LOGGER)
       self.logger = logger
       @thread = Thread.new {
@@ -27,6 +27,14 @@ module RunLater
       @worker ||= RunLater::Worker.new
     end
 
+    def self.flush_logger
+      logger.flush if logger.respond_to?(:flush)
+    end
+    
+    def flush_logger
+      self.class.flush_logger
+    end
+    
     def self.shutdown
       begin
         Timeout::timeout 10 do
@@ -48,12 +56,12 @@ module RunLater
             # which will in return hand over control to the worker thread.
             # However, it doesn't work in Passenger 2.1.0, since it removes
             # all its classes before handing the request over to Rails.
-            Thread.pass if defined?(::Passenger)
+            Thread.pass if defined?(::Passenger) or defined?(::PhusionPassenger)
           end
         end
       rescue Timeout::Error
         logger.warn("Worker thread takes too long and will be killed.")
-        logger.flush
+        flush_logger
         instance.thread.kill!
         @worker = RunLater::Worker.new
       end
@@ -66,11 +74,11 @@ module RunLater
           Thread.current[:running] = true
           block.call
           Thread.current[:running] = false
-          logger.flush
+          flush_logger
         end
       rescue Exception => e
         logger.error("Worker thread crashed, retrying. Error was: #{e}")
-        logger.flush
+        flush_logger
         Thread.current[:running] = false
         retry
       end
